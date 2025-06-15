@@ -1,0 +1,45 @@
+name: Build and Deploy to Docker Hub and Azure Container Instances
+
+on:
+  push:
+    branches:
+      - master
+    paths:
+      - 'Koodistopalvelu/**'
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./Koodistopalvelu
+          push: true
+          tags: vanhanenjla/koodistopalvelu-cli:latest
+
+      - name: Log in to Azure
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Deploy to Azure Container Instances
+        uses: azure/aci-deploy@v1
+        with:
+          resource-group: rg-koodistopalvelu
+          name: koodistopalvelu-cli
+          image: vanhanenjla/koodistopalvelu-cli:latest
+          cpu: 1
+          memory: 1
+          dns-name-label: koodistopalvelu-cli-${{ github.run_number }}
+          location: swedencentral
